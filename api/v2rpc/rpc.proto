@@ -1,0 +1,312 @@
+// Copyright 2022 ByteDance and/or its affiliates
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/kubewharf/kubebrain-client/api/v2rpc;v2rpc";
+
+// Enable custom Size method (Required by Marshal and Unmarshal).
+option (gogoproto.sizer_all) = true;
+// Enable registration with golang/protobuf for the grpc-gateway.
+option (gogoproto.goproto_registration) = true;
+// Enable generation of XXX_MessageName methods for grpc-go/status.
+option (gogoproto.messagename_all) = true;
+
+message ResponseHeader {
+  // revision is tso which increases monotonically.
+  uint64 revision = 1;
+}
+
+message KeyValue {
+  // key is the identifier in bytes. An empty key is not allowed.
+  bytes key = 1;
+  // revision is the revision of latest modification on this key.
+  uint64 revision = 2;
+  // value is the value held by the key, in bytes.
+  bytes value = 3;
+}
+
+message GetRequest {
+  // key is the identifier in bytes. An empty key is not allowed.
+  bytes key = 1;
+  // revision is the point-in-time of the key-value store to use for the get.
+  // If revision is less or equal to zero, the range is over the newest key-value store.
+  // If the revision has been compacted, ErrCompacted is returned as a response.
+  uint64 revision = 2;
+}
+
+message GetResponse {
+  ResponseHeader header = 1;
+  // kv is the key-value pair by the get request.
+  KeyValue kv = 2;
+}
+
+message RangeFilter {
+  enum Hash {
+    MD5 = 0; // default md5
+    SHA1 = 1; // sha1
+  }
+  // hash(key) % shard_num = shard_index
+  Hash hash = 1;
+  // trim prefix before hash
+  bytes trim_prefix = 2;
+  // total shard number
+  int64 shard_count = 3;
+  // shard id to filter
+  int64 shard_index = 4;
+}
+
+message RangeRequest {
+  // key is the first key for the range.
+  bytes key = 1;
+  // end is the upper bound on the requested range [key, end).
+  bytes end = 2;
+  // limit is a limit on the number of keys returned for the request. When limit is set to 0,
+  // it is treated as no limit.
+  int64 limit = 3;
+  // revision is the point-in-time of the key-value store to use for the range.
+  // If revision is less or equal to zero, the range is over the newest key-value store.
+  // If the revision has been compacted, ErrCompacted is returned as a response.
+  uint64 revision = 4;
+  // filter when range, only key satisfying filter condition will be returned
+  RangeFilter filter = 5;
+}
+
+message RangeResponse {
+  ResponseHeader header = 1;
+  // kvs is the list of key-value pairs matched by the range request.
+  repeated KeyValue kvs = 2;
+  // more indicates if there are more keys to return in the requested range.
+  bool more = 3;
+}
+
+message StreamRangeResponse {
+  RangeResponse range_response = 1;
+  string err = 2;
+}
+
+message CountRequest {
+  // key is the first key for the count.
+  bytes key = 1;
+  // end is the upper bound on the requested count [key, end).
+  bytes end = 2;
+  // filter when count, only keys which satisfy filter condition requirement will be counted
+  RangeFilter filter = 3;
+}
+
+message CountResponse {
+  ResponseHeader header = 1;
+  // count is set to the number of keys within the range when requested.
+  uint64 count = 2;
+}
+
+message ListPartitionRequest {
+  // key is the first key for partition list.
+  bytes key = 1;
+  // end is the upper bound on the requested partition list [key, end).
+  bytes end = 2;
+}
+
+message ListPartitionResponse {
+  ResponseHeader header = 1;
+  // partition_num is the number of partitions .
+  int64 partition_num = 2;
+  // partition_keys, format is [ key, partition_split keys ..., end ]
+  repeated bytes partition_keys = 3;
+}
+
+service Read {
+  // get single key
+  rpc Get (GetRequest) returns (GetResponse) {
+    option (google.api.http) = {
+      post: "/v1/kv/get"
+      body: "*"
+    };
+  }
+  // range keys from key to end
+  rpc Range (RangeRequest) returns (RangeResponse) {
+    option (google.api.http) = {
+      post: "/v1/kv/range"
+      body: "*"
+    };
+  }
+  // rane keys in stream mode
+  rpc RangeStream (RangeRequest) returns (stream StreamRangeResponse) {
+    option (google.api.http) = {
+      post: "/v1/kv/rangestream"
+      body: "*"
+    };
+  }
+  // count keys from key to end
+  rpc Count (CountRequest) returns (CountResponse) {
+    option (google.api.http) = {
+      post: "/v1/kv/count"
+      body: "*"
+    };
+  }
+  // list partitions for keys from key to end
+  rpc ListPartition (ListPartitionRequest) returns (ListPartitionResponse) {
+    option (google.api.http) = {
+      post: "/v1/read/partitions"
+      body: "*"
+    };
+  }
+}
+
+message Event {
+  enum EventType {
+    CREATE = 0;
+    PUT = 1;
+    DELETE = 2;
+  }
+  // type is the kind of event. If type is a CREATE or PUT, it indicates
+  // new data has been stored to the key. If type is a DELETE,
+  // it indicates the key was deleted.
+  EventType type = 1;
+  // kv holds the KeyValue for the event.
+  // A CREATE event indicates the creation of a key.
+  // A PUT event contains current kv pair.
+  // A DELETE/EXPIRE event contains the deleted key with
+  // its modification revision set to the revision of deletion.
+  KeyValue kv = 2;
+  // revision is tso which increases monotonically.
+  uint64 revision = 3;
+}
+
+
+message WatchRequest {
+  // key is the first key for the range.
+  bytes key = 1;
+  // end is the upper bound on the requested range [key, end).
+  bytes end = 2;
+  // revision is an optional revision to watch from (inclusive). No start_revision is "now".
+  uint64 revision = 4;
+  // filter when watch, only events which satisfy filter condition requirement will be send to subscriber
+  RangeFilter filter = 3;
+}
+
+message WatchResponse {
+  ResponseHeader header = 1;
+
+  // events is the list of events matched by the watch request.
+  repeated Event events = 2;
+
+  // err indicates internal err occurs.
+  string err = 5;
+}
+
+service Watch {
+  // Watch watches for events happening or that have happened. Both input and output
+  // are streams; the input stream is for creating and canceling watchers and the output
+  // stream sends events. One watch RPC can watch on multiple key ranges, streaming events
+  // for several watches at once. The entire event history can be watched starting from the
+  // last compaction revision.
+  rpc Watch (WatchRequest) returns (stream WatchResponse) {
+    option (google.api.http) = {
+      post: "/v1/watch"
+      body: "*"
+    };
+  }
+}
+
+message CreateRequest {
+  // key is the subject key for the comparison operation.
+  bytes key = 1;
+  // value is the value of the given key, in bytes.
+  bytes value = 2;
+  // lease is the lease ttl seconds of the given key.
+  int64 lease = 3;
+}
+
+message CreateResponse {
+  ResponseHeader header = 1;
+  // succeeded is set to true if the compare evaluated to true or false otherwise.
+  bool succeeded = 2;
+}
+
+message UpdateRequest {
+  KeyValue kv = 1;
+  // lease is the lease ttl seconds of the given key.
+  int64 lease = 2;
+}
+
+message UpdateResponse {
+  ResponseHeader header = 1;
+  // succeeded is set to true if the compare evaluated to true or false otherwise.
+  bool succeeded = 2;
+  // kv is set to the key-value which is deleted, when the succeeded is false.
+  KeyValue kv = 3;
+}
+
+message DeleteRequest {
+  // key is the subject key for the comparison operation.
+  bytes key = 1;
+  // revison is the revision of the given key, used to compare the revision and delete the value
+  uint64 revision = 2;
+}
+
+message DeleteResponse {
+  ResponseHeader header = 1;
+  // succeeded is set to true if the compare evaluated to true or false otherwise.
+  bool succeeded = 2;
+  // kv is set to the key-value which is deleted, when the succeeded is false.
+  KeyValue kv = 3;
+}
+
+// CompactRequest compacts the key-value store up to a given revision. All superseded keys
+// with a revision less than the compaction revision will be removed.
+message CompactRequest {
+  // revision is the key-value store revision for the compaction operation.
+  uint64 revision = 1;
+  // physical is set so the RPC will wait until the compaction is physically
+  // applied to the local database such that compacted entries are totally
+  // removed from the backend database.
+  bool physical = 2;
+}
+
+message CompactResponse {
+  ResponseHeader header = 1;
+}
+
+service Write {
+  rpc Create (CreateRequest) returns (CreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/write/create"
+      body: "*"
+    };
+  }
+
+  rpc Update (UpdateRequest) returns (UpdateResponse) {
+    option (google.api.http) = {
+      post: "/v1/write/update"
+      body: "*"
+    };
+  }
+
+  rpc Delete (DeleteRequest) returns (DeleteResponse) {
+    option (google.api.http) = {
+      post: "/v1/write/delete"
+      body: "*"
+    };
+  }
+
+  rpc Compact (CompactRequest) returns (CompactResponse) {
+    option (google.api.http) = {
+      post: "/v1/write/compact"
+      body: "*"
+    };
+  }
+}
