@@ -184,6 +184,8 @@ message Event {
   KeyValue kv = 2;
   // revision is tso which increases monotonically.
   uint64 revision = 3;
+  // timestamp is the time when kv has been write
+  uint64 timestamp = 4;
 }
 
 
