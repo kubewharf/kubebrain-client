@@ -198,6 +198,8 @@ message WatchRequest {
   uint64 revision = 4;
   // filter when watch, only events which satisfy filter condition requirement will be send to subscriber
   RangeFilter filter = 3;
+  // allowWatchBookmarks is the switch to enable KubeBrain send the latest revision by bookmarks to client
+  bool allowWatchBookmarks = 5;
 }
 
 message WatchResponse {

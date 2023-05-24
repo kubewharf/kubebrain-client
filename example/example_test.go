@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/klog/v2"
 
+	"github.com/kubewharf/kubebrain-client/api/v2rpc"
 	"github.com/kubewharf/kubebrain-client/client"
 )
 
@@ -83,13 +84,13 @@ func TestExample(t *testing.T) {
 		name   string
 		config client.Config
 	}{
-		//{
-		//	name: "insecure access",
-		//	config: client.Config{
-		//		Endpoints: getEndpointsOnSingleHost("http", host, 3379, 4379, 5369),
-		//		LogLevel:  0,
-		//	},
-		//},
+		{
+			name: "insecure access",
+			config: client.Config{
+				Endpoints: getEndpointsOnSingleHost("http", host, 3379, 4379, 5369),
+				LogLevel:  0,
+			},
+		},
 		{
 			name: "secure access",
 			config: client.Config{
@@ -157,7 +158,7 @@ func testExample(t *testing.T, conf client.Config) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			wch := c.Watch(ctx, prefix, client.WithPrefix(), client.WithRevision(prevRev+1))
+			wch := c.Watch(ctx, prefix, client.WithPrefix(), client.WithRevision(prevRev+1), client.WithBookmark())
 			counter := 0
 			for wresp := range wch {
 				ast.NoError(wresp.Err())
@@ -222,4 +223,52 @@ func testExample(t *testing.T, conf client.Config) {
 		ast.Equal(1, counter)
 		ast.False(more)
 	})
+}
+
+func TestWatchBookmark(t *testing.T) {
+	conf := client.Config{
+		Endpoints: getEndpointsOnSingleHost("http", host, 3379),
+		LogLevel:  1,
+	}
+
+	c, err := client.NewClient(conf)
+	if err != nil {
+		t.Errorf("failed to build client err: %v", err)
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	getResp, err := c.Get(ctx, "/test")
+	if err != nil {
+		t.Errorf("failed to get err: %v", err)
+		return
+	}
+
+	rev := getResp.Kv.GetRevision()
+	rev = 0
+
+	watcher := c.Watch(ctx, "/", client.WithRevision(rev), client.WithBookmark())
+	for watchResp := range watcher {
+		if watchResp.Err() != nil {
+			t.Errorf("watcher closed: %v", err)
+			return
+		}
+
+		if watchResp.IsBookmark() {
+			klog.Infof("BOOKMARK rev:%d", watchResp.Header.GetRevision())
+			continue
+		}
+
+		for _, event := range watchResp.Events {
+			switch event.Type {
+			case v2rpc.Event_PUT:
+				klog.Infof("PUT rev:%d key:%s", event.GetRevision(), string(event.GetKv().GetKey()))
+			case v2rpc.Event_DELETE:
+				klog.Infof("DELETE rev:%d key:%s", event.GetRevision(), string(event.GetKv().GetKey()))
+			}
+		}
+
+	}
+
 }

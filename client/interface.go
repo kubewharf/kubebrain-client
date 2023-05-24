@@ -22,28 +22,28 @@ import (
 )
 
 type (
-	CreateRequest rpc.CreateRequest
-	UpdateRequest rpc.UpdateRequest
-	DeleteRequest rpc.DeleteRequest
-	CompactRequest rpc.CompactRequest
-	GetRequest rpc.GetRequest
-	CountRequest rpc.CountRequest
+	CreateRequest        rpc.CreateRequest
+	UpdateRequest        rpc.UpdateRequest
+	DeleteRequest        rpc.DeleteRequest
+	CompactRequest       rpc.CompactRequest
+	GetRequest           rpc.GetRequest
+	CountRequest         rpc.CountRequest
 	ListPartitionRequest rpc.ListPartitionRequest
-	RangeRequest rpc.RangeRequest
-	WatchRequest rpc.WatchRequest
+	RangeRequest         rpc.RangeRequest
+	WatchRequest         rpc.WatchRequest
 
-	CreateResponse rpc.CreateResponse
-	UpdateResponse rpc.UpdateResponse
-	DeleteResponse rpc.DeleteResponse
-	CompactResponse rpc.CompactResponse
-	GetResponse rpc.GetResponse
-	RangeResponse rpc.RangeResponse
-	CountResponse rpc.CountResponse
+	CreateResponse        rpc.CreateResponse
+	UpdateResponse        rpc.UpdateResponse
+	DeleteResponse        rpc.DeleteResponse
+	CompactResponse       rpc.CompactResponse
+	GetResponse           rpc.GetResponse
+	RangeResponse         rpc.RangeResponse
+	CountResponse         rpc.CountResponse
 	ListPartitionResponse rpc.ListPartitionResponse
-	Event rpc.Event
+	Event                 rpc.Event
 
 	RangeStreamChan <-chan StreamRangeResponse
-	WatchChan <-chan WatchResponse
+	WatchChan       <-chan WatchResponse
 )
 
 type RangeStreamRequest struct {
@@ -60,6 +60,13 @@ type WatchResponse struct {
 	Header *rpc.ResponseHeader
 	Events []*rpc.Event
 	streamErr
+}
+
+func (w *WatchResponse) IsBookmark() bool {
+	return w != nil &&
+		w.Err() == nil &&
+		len(w.Events) == 0 &&
+		w.Header.GetRevision() != 0
 }
 
 type streamErr struct {
