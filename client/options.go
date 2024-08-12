@@ -53,6 +53,10 @@ func WithPrefix() *withPrefix {
 	return &withPrefix{}
 }
 
+func WithBookmark() *withBookMark {
+	return &withBookMark{}
+}
+
 type withTTL struct {
 	ttl int64
 }
@@ -117,4 +121,10 @@ type withMaxConcurrent struct {
 
 func (w withMaxConcurrent) decorateStreamRangeReq(request *RangeStreamRequest) {
 	request.maxConcurrent = w.maxConcurrent
+}
+
+type withBookMark struct{}
+
+func (w withBookMark) decorateWatchReq(request *WatchRequest) {
+	request.AllowWatchBookmarks = true
 }
