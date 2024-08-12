@@ -28,8 +28,10 @@ const Brain = "brain"
 
 func init() {
 	logLevel := 8
+	errLogLevel := 4
 	if os.Getenv("DEBUG") != "" {
-		logLevel = -1
+		logLevel = 0
+		errLogLevel = 0
 	}
-	balancer.Register(base.NewBalancerBuilder(Brain, picker.NewBuilder(klog.Level(logLevel))))
+	balancer.Register(base.NewBalancerBuilder(Brain, picker.NewBuilder(klog.Level(logLevel), klog.Level(errLogLevel))))
 }
