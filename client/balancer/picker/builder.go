@@ -22,18 +22,21 @@ import (
 )
 
 type builder struct {
-	logLevel klog.Level
+	logLevel    klog.Level
+	errLogLevel klog.Level
 }
 
-func NewBuilder(logLevel klog.Level) base.PickerBuilder {
+func NewBuilder(logLevel klog.Level, errLogLevel klog.Level) base.PickerBuilder {
 	return &builder{
-		logLevel: logLevel,
+		logLevel:    logLevel,
+		errLogLevel: errLogLevel,
 	}
 }
 
 func (b *builder) Build(readySCs map[resolver.Address]balancer.SubConn) balancer.Picker {
 	return newRWSeparatedRoundRobinBalanced(config{
-		readySCs: readySCs,
-		logLevel: b.logLevel,
+		readySCs:    readySCs,
+		logLevel:    b.logLevel,
+		errLogLevel: b.errLogLevel,
 	})
 }

@@ -41,6 +41,9 @@ type Config struct {
 	// LogLevel is the level of info log
 	LogLevel klog.Level `json:"log-level"`
 
+	// ErrLogLevel is the level of error log
+	ErrLogLevel klog.Level `json:"err-log-level"`
+
 	// MaxCallSendMsgSize is the client-side request send limit in bytes.
 	// If 0, it defaults to 2.0 MiB (2 * 1024 * 1024).
 	// Make sure that "MaxCallSendMsgSize" < server-side default send/recv limit.
@@ -123,7 +126,7 @@ func newClient(config Config) (*clientImpl, error) {
 func (c *clientImpl) initScheme() {
 	u, err := url.Parse(c.config.Endpoints[0])
 	if err != nil {
-		klog.ErrorS(err, "invalid url")
+		klog.V(c.config.ErrLogLevel).ErrorS(err, "invalid url")
 		return
 	}
 	c.scheme = u.Scheme

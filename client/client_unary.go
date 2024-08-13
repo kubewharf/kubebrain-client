@@ -117,3 +117,16 @@ func (c *clientImpl) Count(ctx context.Context, start string, end string, opts .
 	resp, err := c.rpcClient.Count(ctx, (*rpc.CountRequest)(req))
 	return (*CountResponse)(resp), err
 }
+
+func (c *clientImpl) ListPartition(ctx context.Context, start string, end string, opts ...ListPartitionOption) (*ListPartitionResponse, error) {
+	req := &ListPartitionRequest{}
+	req.Key = []byte(start)
+	req.End = []byte(end)
+
+	for _, opt := range opts {
+		opt.decorateListPartitionReq(req)
+	}
+
+	resp, err := c.rpcClient.ListPartition(ctx, (*rpc.ListPartitionRequest)(req))
+	return (*ListPartitionResponse)(resp), err
+}

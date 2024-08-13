@@ -79,7 +79,7 @@ func (l *leaderChecker) checkLeader() (resolver.Address, error) {
 		klog.V(l.LogLevel).InfoS("cur leader", "leader", addr.Addr)
 		return addr, nil
 	case err := <-errc:
-		klog.ErrorS(err, "no leader")
+		klog.V(l.ErrLogLevel).ErrorS(err, "no leader")
 		return resolver.Address{}, err
 	case <-ctx.Done(): // cause only by timeout
 		klog.V(l.LogLevel).InfoS("time out")
@@ -96,7 +96,7 @@ func (l *leaderChecker) grpcHealthCheck(ctx context.Context, ep string) (isHealt
 	conn, err := grpc.DialContext(ctx, ep, l.grpcDialOpts...)
 	if err != nil {
 		if status.Code(err) != codes.Canceled {
-			klog.ErrorS(err, "dial failed", "endpoints", ep)
+			klog.V(l.ErrLogLevel).ErrorS(err, "dial failed", "endpoints", ep)
 		}
 		return false, err
 	}
@@ -105,7 +105,7 @@ func (l *leaderChecker) grpcHealthCheck(ctx context.Context, ep string) (isHealt
 	resp, err := cli.Check(ctx, &grpc_health_v1.HealthCheckRequest{})
 	if err != nil {
 		if status.Code(err) != codes.Canceled {
-			klog.ErrorS(err, "check failed", "endpoints", ep)
+			klog.V(l.ErrLogLevel).ErrorS(err, "check failed", "endpoints", ep)
 		}
 		return false, err
 	}

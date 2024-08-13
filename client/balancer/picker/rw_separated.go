@@ -26,8 +26,9 @@ import (
 )
 
 type config struct {
-	readySCs map[resolver.Address]balancer.SubConn
-	logLevel klog.Level
+	readySCs    map[resolver.Address]balancer.SubConn
+	logLevel    klog.Level
+	errLogLevel klog.Level
 }
 
 const (
@@ -63,6 +64,7 @@ func newRWSeparatedRoundRobinBalanced(conf config) balancer.Picker {
 
 type rwSeparatedRoundBalanced struct {
 	logLevel    klog.Level
+	errLogLevel klog.Level
 	key         string
 	record      *leaderRecord
 	mu          sync.RWMutex
@@ -79,7 +81,7 @@ func (rw *rwSeparatedRoundBalanced) Pick(ctx context.Context, opts balancer.Pick
 
 	n := len(rw.addrToSC)
 	if n == 0 {
-		klog.ErrorS(balancer.ErrNoSubConnAvailable, "addrs", rw.rawAddrs)
+		klog.V(rw.errLogLevel).ErrorS(balancer.ErrNoSubConnAvailable, "addrs", rw.rawAddrs)
 		return nil, nil, balancer.ErrNoSubConnAvailable
 	}
 
@@ -115,7 +117,7 @@ func (rw *rwSeparatedRoundBalanced) Pick(ctx context.Context, opts balancer.Pick
 		if info.Err == nil {
 			klog.V(rw.logLevel).InfoS("balancer done", fss...)
 		} else {
-			klog.ErrorS(info.Err, "balancer failed", fss...)
+			klog.V(rw.errLogLevel).ErrorS(info.Err, "balancer failed", fss...)
 		}
 	}
 	return sc, doneFunc, nil
@@ -149,7 +151,7 @@ func (rw *rwSeparatedRoundBalanced) pickWriter() (sc balancer.SubConn, picked st
 	exist := false
 	sc, exist = rw.rawAddrToSC[picked]
 	if !exist {
-		klog.ErrorS(balancer.ErrNoSubConnAvailable, "failed to pick writer", "picked", picked, "addrs", rw.rawAddrs)
+		klog.V(rw.errLogLevel).ErrorS(balancer.ErrNoSubConnAvailable, "failed to pick writer", "picked", picked, "addrs", rw.rawAddrs)
 		sc, picked, err = nil, "", balancer.ErrNoSubConnAvailable
 	}
 
