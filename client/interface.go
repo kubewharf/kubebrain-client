@@ -22,28 +22,28 @@ import (
 )
 
 type (
-	CreateRequest rpc.CreateRequest
-	UpdateRequest rpc.UpdateRequest
-	DeleteRequest rpc.DeleteRequest
-	CompactRequest rpc.CompactRequest
-	GetRequest rpc.GetRequest
-	CountRequest rpc.CountRequest
+	CreateRequest        rpc.CreateRequest
+	UpdateRequest        rpc.UpdateRequest
+	DeleteRequest        rpc.DeleteRequest
+	CompactRequest       rpc.CompactRequest
+	GetRequest           rpc.GetRequest
+	CountRequest         rpc.CountRequest
 	ListPartitionRequest rpc.ListPartitionRequest
-	RangeRequest rpc.RangeRequest
-	WatchRequest rpc.WatchRequest
+	RangeRequest         rpc.RangeRequest
+	WatchRequest         rpc.WatchRequest
 
-	CreateResponse rpc.CreateResponse
-	UpdateResponse rpc.UpdateResponse
-	DeleteResponse rpc.DeleteResponse
-	CompactResponse rpc.CompactResponse
-	GetResponse rpc.GetResponse
-	RangeResponse rpc.RangeResponse
-	CountResponse rpc.CountResponse
+	CreateResponse        rpc.CreateResponse
+	UpdateResponse        rpc.UpdateResponse
+	DeleteResponse        rpc.DeleteResponse
+	CompactResponse       rpc.CompactResponse
+	GetResponse           rpc.GetResponse
+	RangeResponse         rpc.RangeResponse
+	CountResponse         rpc.CountResponse
 	ListPartitionResponse rpc.ListPartitionResponse
-	Event rpc.Event
+	Event                 rpc.Event
 
 	RangeStreamChan <-chan StreamRangeResponse
-	WatchChan <-chan WatchResponse
+	WatchChan       <-chan WatchResponse
 )
 
 type RangeStreamRequest struct {
@@ -108,6 +108,9 @@ type Client interface {
 	// Count counts num of kvs in [start, end)
 	Count(ctx context.Context, start string, end string, opts ...CountOption) (*CountResponse, error)
 
+	// ListPartition return all partitions in [start, end)
+	ListPartition(ctx context.Context, start string, end string, opts ...ListPartitionOption) (*ListPartitionResponse, error)
+
 	// Close closes client
 	Close() error
 }
@@ -146,4 +149,8 @@ type CountOption interface {
 
 type RangeStreamOption interface {
 	decorateStreamRangeReq(request *RangeStreamRequest)
+}
+
+type ListPartitionOption interface {
+	decorateListPartitionReq(request *ListPartitionRequest)
 }
