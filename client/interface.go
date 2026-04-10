@@ -115,6 +115,9 @@ type Client interface {
 	// Count counts num of kvs in [start, end)
 	Count(ctx context.Context, start string, end string, opts ...CountOption) (*CountResponse, error)
 
+	// ListPartition return all partitions in [start, end)
+	ListPartition(ctx context.Context, start string, end string, opts ...ListPartitionOption) (*ListPartitionResponse, error)
+
 	// Close closes client
 	Close() error
 }
@@ -153,4 +156,8 @@ type CountOption interface {
 
 type RangeStreamOption interface {
 	decorateStreamRangeReq(request *RangeStreamRequest)
+}
+
+type ListPartitionOption interface {
+	decorateListPartitionReq(request *ListPartitionRequest)
 }

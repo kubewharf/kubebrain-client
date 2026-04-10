@@ -12,7 +12,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/grpc v1.26.0
-	k8s.io/klog/v2 v2.0.0
+	k8s.io/klog/v2 v2.4.0
 )
 
 require (
